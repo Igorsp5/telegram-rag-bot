@@ -1,33 +1,76 @@
-# TG RAG — Telegram News Bot with Vector Search
+# Telegram RAG Bot — News Q&A with Vector Search
 
-An automated system that collects posts from Telegram channels, indexes them with vector embeddings, and answers user questions via GPT-4o-mini with cited sources. All runtime variables (server URL, API token, allowed chat ID) are stored in **Google Sheets** and loaded dynamically — no redeployment needed to change settings.
+RAG-powered Telegram bot that answers user questions using real channel data with source citations.  
+Aggregates and summarizes real-time crypto and news content from multiple Telegram sources.  
+Builds concise, source-grounded answers from noisy unstructured data.
 
-```
+**Tech stack:** Node.js, n8n, Supabase (pgvector), OpenAI API, Telegram API
+
+---
+
+## 🎯 Why this project
+
+Telegram channels contain a large amount of unstructured news data.  
+This project solves:
+
+- Information overload (too many posts)
+- Lack of structured search across channels
+- No source-grounded answers
+
+The bot aggregates, filters, and summarizes news using RAG with verifiable sources.
+
+---
+
+## 🚀 Example Bot Response
+
+**User Question**
+> What happened with Bitcoin today?
+
+**Answer**
+
+1. Bitcoin closed above $75,000 for the first time in 73 days. (1)  
+2. Michael Saylor purchased nearly $1B worth of Bitcoin. (1)(2)  
+3. Bitcoin ETFs recorded their largest single-day inflows since mid-January. (2)  
+
+📡 **Sources**  
+(1) DEGERNES TRADING — Apr 18  
+(2) headlines — Apr 18
+
+---
+
+## ⚡ Key Features
+
+- RAG-based question answering over Telegram data  
+- Source-grounded responses with citations (1)(2)  
+- Deduplication before embedding (cost optimization)  
+- Vector search with pgvector (HNSW)  
+- Config via Google Sheets (no redeploy)  
+- Conversation history (context-aware answers)  
+
+---
+
+## Architecture
+
 Telegram channels → Node.js server → n8n (dedup + embeddings + storage) → Supabase (pgvector)
                                                                                    ↑
 Telegram bot  ←── n8n (history + RAG + GPT-4o-mini) ──────────────────────────────┘
                               ↑
                        Google Sheets (variables)
-```
 
-### Example bot response
+---
 
-```
-1. Bitcoin closed above $75,000 for the first time in 73 days. (1)
-2. Michael Saylor purchased nearly $1B in Bitcoin. (1)(2)
-3. Bitcoin ETFs recorded their largest single-day inflows since mid-January. (2)
+## ⚠️ Limitations
 
-📡 Sources:
-(1) DEGERNES TRADING — Apr 18
-(2) headlines — Apr 18
-```
+- Depends on Telegram API availability  
+- Quality depends on source channels  
+- No advanced reranking yet  
 
 ---
 
 ## Project Structure
 
 ```
-tg-rag-project/
+telegram-rag-bot/
 ├── README.md                     ← this file (English)
 ├── README.ru.md                  ← Russian version
 ├── .gitignore
