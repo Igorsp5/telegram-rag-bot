@@ -1,0 +1,790 @@
+{
+  "name": "TG RAG — 2. Query (Telegram → RAG → Answer)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "a1699791-6724-4aa4-bbb3-7c1acae2a353",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "position": [
+        -1184,
+        128
+      ],
+      "typeVersion": 1.2,
+      "webhookId": "5379eada-9268-4aa5-a78c-ead847c88d67"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "auth-cond",
+              "leftValue": "={{ $json.message.chat.id }}",
+              "rightValue": "={{ $json.vars.chat_id }}",
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "175b09b3-e49f-4ab3-b143-79249d9f4998",
+      "name": "Auth Check",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        -416,
+        144
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.voice }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "object",
+                      "operation": "exists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Voice"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Text"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "abe992f1-c8b4-43e9-848a-b7e7ddbbe9d7",
+      "name": "Voice or Text?",
+      "type": "n8n-nodes-base.switch",
+      "position": [
+        -224,
+        128
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.voice.file_id }}",
+        "additionalFields": {}
+      },
+      "id": "5bd55d7b-31ee-4c63-b2a0-bb896e524019",
+      "name": "Get Voice File",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1.2,
+      "webhookId": "97862dca-adfb-4929-8ca5-9e3db42c325b"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "id": "32544c68-7783-413c-80b0-e735c92a106e",
+      "name": "Transcribe Voice",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "position": [
+        224,
+        0
+      ],
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "jsCode": "const trigger = $('Telegram Trigger').first().json;\nconst chatId  = trigger.message.chat.id;\nconst sessionId = String(chatId);\n\nlet queryText = ($json.text || '').trim();\nif (!queryText) {\n  queryText = (trigger.message.text || '').trim();\n}\n\nif (!queryText) throw new Error('Empty query');\n\nreturn [{ json: { queryText, chatId, sessionId } }];"
+      },
+      "id": "3e689e67-2389-4bc5-b208-6ff49b56bcd1",
+      "name": "Normalize Query Text",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        416,
+        144
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT key, value FROM tg_config\nWHERE key IN ('retention_days', 'similarity_min', 'search_top_k');",
+        "options": {}
+      },
+      "id": "2bc5822c-a6f5-44de-9d5a-21eede91cc42",
+      "name": "Read Config",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        1024,
+        144
+      ],
+      "typeVersion": 2.6,
+      "credentials": {
+        "postgres": {
+          "id": "pTGjRU4YFxqJSp9K",
+          "name": "railway"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "text-embedding-3-small"
+            },
+            {
+              "name": "input",
+              "value": "=={{ $('Normalize Query Text').first().json.queryText }}"
+            },
+            {
+              "name": "encoding_format",
+              "value": "float"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "12a6f9ce-4689-4224-beb6-8301d415eeaa",
+      "name": "Embed User Query",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1232,
+        144
+      ],
+      "typeVersion": 4.4
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfgRows = $('Read Config').all();\nconst cfg = {};\ncfgRows.forEach(r => { cfg[r.json.key] = r.json.value; });\n\nconst retentionDays = parseInt(cfg.retention_days || '60');\nconst similarityMin = parseFloat(cfg.similarity_min || '0.25');\nconst topK          = parseInt(cfg.search_top_k || '15');\n\nconst embItem = $input.all().find(i => i.json?.data?.[0]?.embedding);\nconst vector  = embItem?.json?.data?.[0]?.embedding;\nif (!vector || !Array.isArray(vector)) throw new Error('No embedding');\n\nconst { queryText, chatId, sessionId } = $('Normalize Query Text').first().json;\n\nreturn [{ json: {\n  queryText,\n  chatId,\n  sessionId,\n  queryVector:  '[' + vector.join(',') + ']',\n  retentionDays,\n  similarityMin,\n  topK\n} }];"
+      },
+      "id": "a4490bf4-434d-4549-a536-b48ac09c7bfa",
+      "name": "Merge Config + Vector",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1424,
+        144
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  msg_id,\n  channel_title,\n  text,\n  msg_date::date AS msg_date,\n  (1 - (embedding <=> '{{ $json.queryVector }}'::vector))::float AS similarity\nFROM tg_messages\nWHERE\n  msg_date >= NOW() - INTERVAL '{{ $json.retentionDays }} days'\n  AND embedding IS NOT NULL\n  AND (1 - (embedding <=> '{{ $json.queryVector }}'::vector)) >= {{ $json.similarityMin }}\nORDER BY embedding <=> '{{ $json.queryVector }}'::vector\nLIMIT {{ $json.topK }};",
+        "options": {}
+      },
+      "id": "bc5b7a37-1bde-4732-a03a-3863ed988d46",
+      "name": "Vector Search in Supabase",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        1632,
+        144
+      ],
+      "typeVersion": 2.6,
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "pTGjRU4YFxqJSp9K",
+          "name": "railway"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const allRows = $input.all();\nconst rows = allRows.filter(r => r.json && r.json.msg_id);\nconst merged = $('Merge Config + Vector').first().json;\nconst { queryText, chatId, sessionId } = merged;\n\nif (rows.length === 0) {\n  return [{ json: { context: '', sourcesBlock: '', queryText, chatId, sessionId, hasData: false } }];\n}\n\n// Группируем по каналу, присваиваем номер источника\nconst byChannel = {};\nconst sourceIndex = {}; // channel_title -> номер (1, 2, 3...)\nlet srcNum = 1;\n\nrows.forEach(r => {\n  const rawTitle = r.json.channel_title || '';\n  const chId     = r.json.channel_id    || '';\n  const ch = /^\\d+$/.test(rawTitle.trim()) ? chId : rawTitle.trim();\n\n  if (!byChannel[ch]) {\n    byChannel[ch] = [];\n    sourceIndex[ch] = srcNum++;\n  }\n  byChannel[ch].push({\n    date: r.json.msg_date,\n    text: r.json.text.slice(0, 600)\n  });\n});\n\n// Контекст для AI — каждый фрагмент помечен номером источника\nlet context = '';\nfor (const [ch, msgs] of Object.entries(byChannel)) {\n  const num = sourceIndex[ch];\n  context += `\\n=== [${num}] ${ch} ===\\n`;\n  msgs.forEach(m => {\n    context += `[${m.date}] ${m.text}\\n`;\n  });\n}\n\n// Форматируем дату\nfunction fmtDate(raw) {\n  try {\n    return new Date(raw).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });\n  } catch(e) { return raw; }\n}\n\n// Блок источников с номерами\nconst sourcesList = Object.entries(byChannel).map(([ch, msgs]) => {\n  const num = sourceIndex[ch];\n  const latest = msgs.map(m => m.date).sort().reverse()[0];\n  return `(${num}) ${ch} — ${fmtDate(latest)}`;\n});\n\nconst sourcesBlock = '\\n\\n<b>📡 Источники:</b>\\n' + sourcesList.join('\\n');\n\nreturn [{ json: {\n  context: context.trim(),\n  sourcesBlock,\n  sourceIndex,\n  queryText,\n  chatId,\n  sessionId,\n  hasData: context.trim().length > 0\n} }];"
+      },
+      "id": "0c09d1bd-a099-40a0-bd32-74106844afda",
+      "name": "Build RAG Context",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1824,
+        144
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "has-data",
+              "leftValue": "={{ $json.hasData }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "10d9e547-ad64-4726-aba3-ce22810d7dc5",
+      "name": "Found Relevant Data?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        2032,
+        144
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "В базе нет релевантных данных по вашему запросу.\n\n<i>Попробуйте переформулировать или уточнить тему.</i>",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "a6f43f85-aaf8-4946-8abc-b03fe810be71",
+      "name": "Send No Data Reply",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        2352,
+        528
+      ],
+      "typeVersion": 1.2,
+      "webhookId": "d97a4160-c070-402f-8ac1-eb8de461fff3"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { queryText, context, chatId, sourcesBlock, sourceIndex, sessionId } = $input.first().json;\n\nconst sourcesList = Object.entries(sourceIndex)\n  .sort((a, b) => a[1] - b[1])\n  .map(([ch, num]) => `(${num}) = ${ch}`)\n  .join(', ');\n\nconst systemPrompt = [\n  'You are a news analyst. You are given a user query and fragments of posts from Telegram channels.',\n  'Each source block is marked with a number: === [N] Channel Name ===',\n  '',\n  'Rules:',\n  '- Answer ONLY based on the provided data',\n  '- Do not invent facts that are not in the context',\n  '- Remove duplicates and ads',\n  '- Style: Bloomberg/RBC — concise, factual',\n  '- Format: maximum 5 bullet points, 1–2 sentences each',\n  '- After each point, include the source number in parentheses: (1), (2), etc.',\n  `- Source mapping: ${sourcesList}`,\n  '- If a point is based on multiple sources — include all: (1)(2)',\n  '- If the data is not relevant to the query — explicitly say so',\n  '- Current date: ' + new Date().toLocaleDateString('en-US')\n].join('\\n');\n\n// History from Merge History + Query\nconst history = $('Merge History + Query').first().json.history || [];\n\nconst userPrompt = `User query: ${queryText}\\n\\nSources from Telegram:\\n${context}`;\n\nconst body = {\n  model: 'gpt-4o-mini',\n  temperature: 0.3,\n  max_tokens: 1000,\n  messages: [\n    { role: 'system', content: systemPrompt },\n    ...history,\n    { role: 'user', content: userPrompt }\n  ]\n};\n\nreturn [{ json: { body, chatId, sourcesBlock, sessionId, queryText } }];"
+      },
+      "id": "9cfdc443-e042-4927-910f-3a52e2b779ad",
+      "name": "Build OpenAI Request",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        2272,
+        128
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {}
+      },
+      "id": "557ea79b-0eab-43a4-b3ed-6c0ff6dee514",
+      "name": "Call OpenAI",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        2480,
+        128
+      ],
+      "typeVersion": 4.4,
+      "credentials": {
+        "openAiApi": {
+          "id": "AJbpunHZHRIiM35i",
+          "name": "OpenAI n8n_elest_v2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const openAiResponse = $input.first().json;\nconst rawText = openAiResponse?.choices?.[0]?.message?.content || 'Не удалось получить ответ.';\n\nconst prev = $('Build OpenAI Request').first().json;\nconst { chatId, sourcesBlock, sessionId, queryText } = prev;\n\nconst safe = rawText\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\*\\*(.+?)\\*\\*/gs, '<b>$1</b>')\n  .replace(/\\*(.+?)\\*/gs, '<b>$1</b>')\n  .replace(/^#{1,3} (.+)$/gm, '<b>$1</b>');\n\nconst finalText = safe + sourcesBlock;\n\nreturn [{ json: { chatId, text: finalText, sessionId, queryText, answer: rawText } }];"
+      },
+      "id": "c48adb57-89cd-4b94-a8dc-b5aa50312cc6",
+      "name": "Format Answer",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        2688,
+        128
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "97f64268-2159-44fb-ba1d-9d24ba513c4e",
+      "name": "Send to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        2912,
+        128
+      ],
+      "typeVersion": 1.2,
+      "webhookId": "cd85f7a2-6fa3-4a90-ac1a-81cc5e0bae78"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT message FROM n8n_telegram_aggregation_chat_histories\nWHERE session_id = '{{ $json.sessionId }}'\nORDER BY created_at ASC\nLIMIT 20;",
+        "options": {}
+      },
+      "id": "1f1a3f81-f7a2-4bc0-9299-7b856fec2c93",
+      "name": "Load History",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        624,
+        144
+      ],
+      "typeVersion": 2.6,
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "pTGjRU4YFxqJSp9K",
+          "name": "railway"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Собираем историю из Load History\nconst historyRows = $input.all();\nconst history = historyRows\n  .map(r => {\n    try {\n      const msg = r.json.message;\n      return typeof msg === 'string' ? JSON.parse(msg) : msg;\n    } catch(e) { return null; }\n  })\n  .filter(Boolean);\n\n// Берём queryText/chatId/sessionId из Normalize Query Text\nconst normalized = $('Normalize Query Text').first().json;\n\nreturn [{ json: {\n  queryText:  normalized.queryText,\n  chatId:     normalized.chatId,\n  sessionId:  normalized.sessionId,\n  history\n} }];"
+      },
+      "id": "f3de9828-0328-42c1-9beb-d1c0e2f2a4f2",
+      "name": "Merge History + Query",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        832,
+        144
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO n8n_telegram_aggregation_chat_histories (session_id, message)\nVALUES\n  ('{{ $json.sessionId }}', '{{ JSON.stringify({role:\"user\",content:$json.queryText}).replace(/'/g,\"''\") }}'::jsonb),\n  ('{{ $json.sessionId }}', '{{ JSON.stringify({role:\"assistant\",content:$json.answer}).replace(/'/g,\"''\") }}'::jsonb);",
+        "options": {}
+      },
+      "id": "6ccb6836-de1b-4bdb-98f0-4d2a80f1487c",
+      "name": "Save History",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        2608,
+        128
+      ],
+      "typeVersion": 2.6,
+      "credentials": {
+        "postgres": {
+          "id": "pTGjRU4YFxqJSp9K",
+          "name": "railway"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst vars = {};\n\nfor (const item of items) {\n  const row = item.json;\n\n  const cleanRow = {};\n  for (const key of Object.keys(row)) {\n    cleanRow[key.trim()] = row[key];\n  }\n\n  const name = cleanRow.name;\n  const value = cleanRow.value;\n\n  if (name) {\n    vars[name] = value;\n  }\n}\n\nreturn [\n  {\n    json: {\n      vars\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -816,
+        368
+      ],
+      "id": "c02bc77d-7d25-4750-8820-cdebc8f72a5c",
+      "name": "Access variables"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -640,
+        144
+      ],
+      "id": "87153740-06c0-4273-8aaa-c5256ffc0d0d",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "YOUR_SHEET_NAME",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "external",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -992,
+        368
+      ],
+      "id": "390e9d8d-cbb2-46ad-8ed2-ab028cbb93ec",
+      "name": "external access store",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "qfDFyhrEW0TuZ5eW",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "external access store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auth Check": {
+      "main": [
+        [
+          {
+            "node": "Voice or Text?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voice or Text?": {
+      "main": [
+        [
+          {
+            "node": "Get Voice File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Normalize Query Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Voice File": {
+      "main": [
+        [
+          {
+            "node": "Transcribe Voice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe Voice": {
+      "main": [
+        [
+          {
+            "node": "Normalize Query Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Query Text": {
+      "main": [
+        [
+          {
+            "node": "Load History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Config": {
+      "main": [
+        [
+          {
+            "node": "Embed User Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed User Query": {
+      "main": [
+        [
+          {
+            "node": "Merge Config + Vector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Config + Vector": {
+      "main": [
+        [
+          {
+            "node": "Vector Search in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vector Search in Supabase": {
+      "main": [
+        [
+          {
+            "node": "Build RAG Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build RAG Context": {
+      "main": [
+        [
+          {
+            "node": "Found Relevant Data?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Found Relevant Data?": {
+      "main": [
+        [
+          {
+            "node": "Build OpenAI Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send No Data Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build OpenAI Request": {
+      "main": [
+        [
+          {
+            "node": "Call OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Format Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Answer": {
+      "main": [
+        [
+          {
+            "node": "Send to Telegram",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Save History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load History": {
+      "main": [
+        [
+          {
+            "node": "Merge History + Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge History + Query": {
+      "main": [
+        [
+          {
+            "node": "Read Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Auth Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Access variables": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "external access store": {
+      "main": [
+        [
+          {
+            "node": "Access variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f6693af4-21e1-4842-9ef1-5dcb1ccc89e3",
+  "meta": {
+    "instanceId": "474ce41d25c8e92bea3bbd4586c0e4d1954ba541d092a2bbdd9de306225a0c70"
+  },
+  "id": "u7lXPTTbaGZzjP0u",
+  "tags": [
+    {
+      "updatedAt": "2026-05-01T16:57:28.005Z",
+      "createdAt": "2026-05-01T16:57:28.005Z",
+      "id": "qPvfaevcUFWSSR8x",
+      "name": "2026_05_01"
+    },
+    {
+      "updatedAt": "2026-04-26T18:22:16.227Z",
+      "createdAt": "2026-04-26T18:22:16.227Z",
+      "id": "9Z4J3I7IpOpMSrLY",
+      "name": "last5"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+name,value
+url,https://YOUR_SERVER_IP:3005
+token,YOUR_API_TOKEN
+chat_id,YOUR_TELEGRAM_CHAT_ID

@@ -1,0 +1,638 @@
+{
+  "name": "TG RAG — 1. Ingest + Daily Cleanup (dynamic config)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "c8e1d10a-91c5-4945-90b3-6c3e7d25f00a",
+      "name": "Every Hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 3 * * *"
+            }
+          ]
+        }
+      },
+      "id": "a06dfafc-13fd-48ff-b472-48bfd60f1aeb",
+      "name": "Every Day 03:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        16,
+        656
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT key, value FROM tg_config\nWHERE key IN ('fetch_limit', 'fetch_hours_back');",
+        "options": {}
+      },
+      "id": "75974180-dea4-4151-9a80-41eaf74ac3b1",
+      "name": "Read Config",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        672,
+        0
+      ],
+      "typeVersion": 2.6,
+      "credentials": {
+        "postgres": {
+          "id": "pTGjRU4YFxqJSp9K",
+          "name": "railway"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = {};\n$input.all().forEach(r => { cfg[r.json.key] = r.json.value; });\n\nconst hoursBack = parseInt(cfg.fetch_hours_back || '1');\nconst limit     = parseInt(cfg.fetch_limit || '80');\n\n// Полный ISO timestamp — сервер ходит ВПЕРЁД от since к now\nconst since = new Date(Date.now() - hoursBack * 3600 * 1000).toISOString();\n\nreturn [{ json: { limit, since, hoursBack } }];"
+      },
+      "id": "d762de1b-9579-461b-b272-3eb012d52968",
+      "name": "Parse Config",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        896,
+        0
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "url": "=https://{{$node[\"Access variables\"].json.vars.url}}/get-channels",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{$node[\"Access variables\"].json.vars.token}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7451f14c-76ec-4dd1-83d4-eccaa66dd512",
+      "name": "Get All Channels",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        16,
+        352
+      ],
+      "typeVersion": 4.4
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg      = $('Parse Config').first().json;\nconst channels = $input.all();\n\nconst SKIP_IDS = new Set([\n  '1111111111', '2222222222'\n]);\n\nconst seen = new Set();\nreturn channels\n  .filter(ch => {\n    const id = String(ch.json.id);\n    if (SKIP_IDS.has(id) || seen.has(id)) return false;\n    seen.add(id);\n    return true;\n  })\n  .map(ch => ({\n    json: { ...ch.json, limit: cfg.limit, since: cfg.since }\n  }));"
+      },
+      "id": "806852f9-1b67-4934-a025-9c89bb205233",
+      "name": "Attach Config to Channels",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        272,
+        352
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(ch => ({ json: ch.json }));"
+      },
+      "id": "36a6601c-5a6a-4360-8ff4-d6abe819edf7",
+      "name": "Split Per Channel",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        560,
+        352
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "url": "=https://{{ $(\"Access variables\").first().json.vars.url }}/get-messages",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "channel",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "limit",
+              "value": "={{ $json.limit }}"
+            },
+            {
+              "name": "since",
+              "value": "={{ $json.since }}"
+            },
+            {
+              "name": "token",
+              "value": "={{ $(\"Access variables\").first().json.vars.token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5b7bf787-3b08-4f47-a7b4-41f87c01cff4",
+      "name": "Fetch Messages",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        800,
+        352
+      ],
+      "typeVersion": 4.4
+    },
+    {
+      "parameters": {
+        "jsCode": "// Матчим по channel_id из ответа API\nconst splitChannels = $('Split Per Channel').all();\n\nconst channelMap = {};\nsplitChannels.forEach(ch => {\n  const id = String(ch.json.id || '');\n  channelMap[id] = ch.json;\n});\n\nconst result = [];\nconst fetchedItems = $input.all();\n\nfor (let i = 0; i < fetchedItems.length; i++) {\n  const item = fetchedItems[i];\n\n  const rawChannel = item.json.channel;\n  const channelId  = rawChannel ? String(rawChannel) : '';\n\n  const ch = channelMap[channelId] || {};\n  const channelTitle = ch.title || ch.username || channelId;\n\n  const messages = Array.isArray(item.json.messages) ? item.json.messages : [];\n\n  for (const m of messages) {\n    if (!m.text || m.text.trim().length <= 30) continue;\n    result.push({\n      json: {\n        msg_id:        String(m.id),\n        channel_id:    channelId,\n        channel_title: channelTitle,\n        text:          m.text.trim(),\n        msg_date:      new Date(m.date * 1000).toISOString(),\n        embed_input:   `[${channelTitle}] ${m.text.trim()}`\n      }\n    });\n  }\n}\n\nif (result.length === 0) {\n  return [{ json: { skip: true } }];\n}\n\nreturn result;"
+      },
+      "id": "0d6cab2c-6d9a-4e00-8a4c-4400f89d3465",
+      "name": "Prepare Messages",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1024,
+        352
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "skip-check",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "54252433-24b3-48b0-acd6-99e4ee910197",
+      "name": "Has Messages?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        1248,
+        352
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "jsCode": "// Собираем все сообщения в один item с массивом и готовим VALUES для дедуп-запроса\nconst messages = $input.all().filter(m => !m.json.skip && m.json.embed_input);\n\nif (messages.length === 0) {\n  // Нечего обрабатывать — останавливаем цепочку (downstream не запускается)\n  return [];\n}\n\nconst esc = (s) => String(s).replace(/'/g, \"''\");\n\nconst valuesClause = messages\n  .map(m => `('${esc(m.json.msg_id)}','${esc(m.json.channel_id)}')`)\n  .join(',');\n\nreturn [{\n  json: {\n    messages: messages.map(m => m.json),\n    valuesClause,\n    incomingCount: messages.length\n  }\n}];"
+      },
+      "id": "60dbe7a2-d945-4d23-a883-880bf04c3f8a",
+      "name": "Aggregate for Dedup",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1488,
+        336
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH incoming(msg_id, channel_id) AS (\n  VALUES {{ $json.valuesClause }}\n)\nSELECT i.msg_id, i.channel_id\nFROM incoming i\nJOIN tg_messages t USING (msg_id, channel_id);",
+        "options": {}
+      },
+      "id": "fe565e0d-d180-4f10-9fca-63973c0b2f09",
+      "name": "Check Existing",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        1744,
+        336
+      ],
+      "typeVersion": 2.6,
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "pTGjRU4YFxqJSp9K",
+          "name": "railway"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Отфильтровываем сообщения, которые уже есть в БД — экономим OpenAI\nconst aggregated = $('Aggregate for Dedup').first().json;\nconst allMessages = aggregated.messages || [];\n\nconst existingRows = $input.all().filter(r => r.json && r.json.msg_id);\nconst existing = new Set(\n  existingRows.map(r => `${r.json.msg_id}:${r.json.channel_id}`)\n);\n\nconst fresh = allMessages.filter(m =>\n  !existing.has(`${m.msg_id}:${m.channel_id}`)\n);\n\nconsole.log(`[Dedup] incoming=${allMessages.length} existing=${existing.size} fresh=${fresh.length}`);\n\nif (fresh.length === 0) {\n  // Все уже в БД — останавливаем цепочку, эмбеддинги делать не нужно\n  return [];\n}\n\nreturn fresh.map(m => ({ json: m }));"
+      },
+      "id": "8553cf27-d1e0-4ee2-8ac6-426f80680e66",
+      "name": "Filter Existing",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1968,
+        336
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "const messages = $input.all().filter(m => !m.json.skip && m.json.embed_input);\n\nif (messages.length === 0) {\n  return [];\n}\n\nconst CHUNK_SIZE = 100;\nconst result = [];\n\nfor (let i = 0; i < messages.length; i += CHUNK_SIZE) {\n  const chunk = messages.slice(i, i + CHUNK_SIZE);\n  result.push({\n    json: {\n      inputs:   chunk.map(m => m.json.embed_input),\n      messages: chunk.map(m => m.json)\n    }\n  });\n}\n\nreturn result;"
+      },
+      "id": "c418beb6-affe-462b-bd15-b31f5e9a3fbb",
+      "name": "Collect Inputs",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        2176,
+        336
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"text-embedding-3-small\",\n  \"input\": {{ JSON.stringify($json.inputs) }},\n  \"encoding_format\": \"float\"\n}",
+        "options": {}
+      },
+      "id": "319f4e83-bcdf-4ede-9772-fdda0bdce87e",
+      "name": "Batch Embeddings Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        2400,
+        336
+      ],
+      "typeVersion": 4.4
+    },
+    {
+      "parameters": {
+        "jsCode": "// Сшиваем эмбеддинги с сообщениями ПОИНДЕКСНО.\n// HTTP Request «Batch Embeddings Request» отдаёт N items (по одному на чанк),\n// в том же порядке, что приходили из Collect Inputs.\n// Поэтому items[idx] соответствует $('Collect Inputs').all()[idx].\n\nconst responses = $input.all();\nconst chunks    = $('Collect Inputs').all();\nconst result    = [];\n\nfor (let idx = 0; idx < responses.length; idx++) {\n  const response = responses[idx].json;\n\n  if (response.error) {\n    throw new Error('OpenAI error in chunk ' + idx + ': ' + JSON.stringify(response.error));\n  }\n\n  const embData = response.data;\n  if (!embData || !Array.isArray(embData)) {\n    throw new Error('Нет data в чанке ' + idx + ': ' + JSON.stringify(response).slice(0, 300));\n  }\n\n  const chunk = chunks[idx];\n  if (!chunk) throw new Error('Не найден соответствующий chunk для idx=' + idx);\n\n  const messages = chunk.json.messages;\n  if (!Array.isArray(messages)) throw new Error('messages не массив в chunk ' + idx);\n\n  // Сортируем по index — на всякий случай, чтобы порядок совпал с messages[]\n  const sorted = [...embData].sort((a, b) => a.index - b.index);\n\n  for (let i = 0; i < sorted.length; i++) {\n    const emb = sorted[i];\n    const msg = messages[i];\n    if (!msg) throw new Error(`Нет сообщения для chunk=${idx} idx=${i}`);\n\n    const embRaw = emb.embedding;\n    const vector = Array.isArray(embRaw)\n      ? embRaw\n      : Object.keys(embRaw)\n          .sort((a, b) => Number(a) - Number(b))\n          .map(k => embRaw[k]);\n\n    if (!vector.length) throw new Error(`Пустой вектор: chunk=${idx} idx=${i}`);\n\n    result.push({\n      json: {\n        msg_id:        String(msg.msg_id || ''),\n        channel_id:    String(msg.channel_id || ''),\n        channel_title: String(msg.channel_title || ''),\n        text:          String(msg.text || ''),\n        msg_date:      String(msg.msg_date || ''),\n        embedding:     '[' + vector.join(',') + ']'\n      }\n    });\n  }\n}\n\nconsole.log(`[Merge] chunks=${responses.length} total_messages=${result.length}`);\nreturn result;"
+      },
+      "id": "1cdfd317-f079-4dd8-9cc3-6fc4b1c5c0d0",
+      "name": "Merge Embeddings",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        2624,
+        336
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO tg_messages (\n  msg_id,\n  channel_id,\n  channel_title,\n  text,\n  msg_date,\n  embedding\n)\nVALUES (\n  {{$json.msg_id}},\n  {{$json.channel_id}},\n  '{{$json.channel_title}}',\n  '{{$json.text}}',\n  NOW(),\n  '{{$json.embedding}}'::vector\n)\nON CONFLICT (msg_id, channel_id) DO UPDATE\nSET\n  embedding = EXCLUDED.embedding,\n  channel_title = EXCLUDED.channel_title,\n  text = EXCLUDED.text,\n  msg_date = EXCLUDED.msg_date;",
+        "options": {}
+      },
+      "id": "19369207-9fae-45be-a38b-b248449e381a",
+      "name": "Upsert to Supabase",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        2832,
+        336
+      ],
+      "typeVersion": 2.6,
+      "credentials": {
+        "postgres": {
+          "id": "pTGjRU4YFxqJSp9K",
+          "name": "railway"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM cleanup_old_messages();",
+        "options": {}
+      },
+      "id": "aba06dbc-02e9-4a72-bd7d-602f6401d9fb",
+      "name": "Cleanup (reads retention_days from config)",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        272,
+        656
+      ],
+      "typeVersion": 2.6,
+      "credentials": {
+        "postgres": {
+          "id": "pTGjRU4YFxqJSp9K",
+          "name": "railway"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $input.first().json;\nconsole.log(`[Cleanup] Удалено: ${r.deleted_count} | retention: ${r.retention_days} дней | cutoff: ${r.cutoff_date}`);\nreturn [{ json: r }];"
+      },
+      "id": "e40abd8d-61d4-4642-80b9-12ffb73f5da0",
+      "name": "Log Cleanup",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        592,
+        656
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst vars = {};\n\nfor (const item of items) {\n  const row = item.json;\n\n  const cleanRow = {};\n  for (const key of Object.keys(row)) {\n    cleanRow[key.trim()] = row[key];\n  }\n\n  const name = cleanRow.name;\n  const value = cleanRow.value;\n\n  if (name) {\n    vars[name] = value;\n  }\n}\n\nreturn [\n  {\n    json: {\n      vars\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "7e2c8487-2878-4642-a7d4-d9ad860d43e0",
+      "name": "Access variables"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "YOUR_SHEET_NAME",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "external",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        240,
+        0
+      ],
+      "id": "d9ae0781-c6e9-4d52-978a-411700dbec6a",
+      "name": "external access store",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "qfDFyhrEW0TuZ5eW",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every Hour": {
+      "main": [
+        [
+          {
+            "node": "external access store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every Day 03:00": {
+      "main": [
+        [
+          {
+            "node": "Cleanup (reads retention_days from config)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleanup (reads retention_days from config)": {
+      "main": [
+        [
+          {
+            "node": "Log Cleanup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Config": {
+      "main": [
+        [
+          {
+            "node": "Parse Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Config": {
+      "main": [
+        [
+          {
+            "node": "Get All Channels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Channels": {
+      "main": [
+        [
+          {
+            "node": "Attach Config to Channels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Config to Channels": {
+      "main": [
+        [
+          {
+            "node": "Split Per Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Per Channel": {
+      "main": [
+        [
+          {
+            "node": "Fetch Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Messages": {
+      "main": [
+        [
+          {
+            "node": "Prepare Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Messages": {
+      "main": [
+        [
+          {
+            "node": "Has Messages?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Messages?": {
+      "main": [
+        [
+          {
+            "node": "Aggregate for Dedup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate for Dedup": {
+      "main": [
+        [
+          {
+            "node": "Check Existing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Existing": {
+      "main": [
+        [
+          {
+            "node": "Filter Existing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Existing": {
+      "main": [
+        [
+          {
+            "node": "Collect Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Inputs": {
+      "main": [
+        [
+          {
+            "node": "Batch Embeddings Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Batch Embeddings Request": {
+      "main": [
+        [
+          {
+            "node": "Merge Embeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Embeddings": {
+      "main": [
+        [
+          {
+            "node": "Upsert to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Access variables": {
+      "main": [
+        [
+          {
+            "node": "Read Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "external access store": {
+      "main": [
+        [
+          {
+            "node": "Access variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "ec5b542b-8b1a-427e-ac09-7a7f0f3c6d9a",
+  "meta": {
+    "instanceId": "474ce41d25c8e92bea3bbd4586c0e4d1954ba541d092a2bbdd9de306225a0c70"
+  },
+  "id": "0Xw6D9ZZ6HBsv5bi",
+  "tags": []
+}
