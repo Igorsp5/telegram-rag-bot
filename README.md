@@ -57,6 +57,8 @@ Telegram channels → Node.js server → n8n (dedup + embeddings + storage) → 
 Telegram bot  ←── n8n (history + RAG + GPT-4o-mini) ──────────────────────────────┘
                               ↑
                        Google Sheets (variables)
+```
+
 ---
 
 ## ⚠️ Limitations
@@ -87,7 +89,6 @@ telegram-rag-bot/
 └── docs/
     └── google_sheets_template.csv # Template for the variables spreadsheet
 ```
-
 ---
 
 ## Requirements
@@ -95,12 +96,12 @@ telegram-rag-bot/
 | Component | Details |
 |-----------|---------|
 | VPS / server | Node.js 18+ |
-| Database | [Supabase](https://supabase.com) (free tier works) or PostgreSQL with pgvector |
-| Automation | [n8n](https://n8n.io) (self-hosted or cloud) |
-| AI | OpenAI API key (`text-embedding-3-small` + `gpt-4o-mini`) |
-| Config store | Google Sheets (shared with n8n via Google Sheets credential) |
-| Telegram reader | A personal Telegram account (not a bot) to read channels |
-| Telegram bot | A bot created via [@BotFather](https://t.me/BotFather) |
+| Database | Supabase or PostgreSQL with pgvector |
+| Automation | n8n |
+| AI | OpenAI API |
+| Config store | Google Sheets |
+| Telegram reader | Personal Telegram account |
+| Telegram bot | @BotFather |
 
 ---
 
