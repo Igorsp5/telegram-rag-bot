@@ -49,14 +49,14 @@ The bot aggregates, filters, and summarizes news using RAG with verifiable sourc
 
 ---
 
-## Architecture
+## 🧠 Architecture
 
+```text
 Telegram channels → Node.js server → n8n (dedup + embeddings + storage) → Supabase (pgvector)
                                                                                    ↑
 Telegram bot  ←── n8n (history + RAG + GPT-4o-mini) ──────────────────────────────┘
                               ↑
                        Google Sheets (variables)
-
 ---
 
 ## ⚠️ Limitations
