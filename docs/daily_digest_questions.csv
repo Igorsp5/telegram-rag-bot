@@ -1,0 +1,539 @@
+questions,questions_en
+"последние новости по рынку криптовалют с учётом ситуации на фондовых рынках США, Европы и Японии, а также глобальной политической обстановки.
+
+используй следующий формат:
+
+#### Рост (+)
+перечисли ключевые позитивные факторы:
+1. ...
+2. ...
+
+#### Падение (-)
+перечисли ключевые негативные факторы:
+1. ...
+2. ...
+
+### Итог
+дай итоговую оценку рынка от -10 до 10:
+- -10 = продавать всё
+- 0 = нейтрально / держать
+- 10 = активно покупать
+
+кратко объясни итоговую оценку, опираясь только на предоставленные данные.","latest news on the cryptocurrency market, considering the US, European, and Japanese stock markets, as well as the global political situation.
+
+Use the following structure:
+
+#### Growth (+)
+List several bullish factors:
+1. ...
+2. ...
+
+#### Decline (-)
+List several bearish factors:
+1. ...
+2. ...
+
+### Summary
+Give a final market score from -10 to 10:
+- -10 = sell everything
+- 0 = neutral / hold
+- 10 = buy aggressively
+
+Explain the score briefly, using only the provided source data."
+"последние новости по токену BTH.
+
+используй следующий формат:
+
+BTH <дата ответа>
+
+#### Рост (+)
+перечисли ключевые позитивные факторы:
+1. ...
+2. ...
+
+#### Падение (-)
+перечисли ключевые негативные факторы:
+1. ...
+2. ...
+
+### Итог
+дай итоговую оценку от -10 до 10:
+- -10 = продавать всё
+- 0 = нейтрально / держать
+- 10 = активно покупать
+
+кратко объясни итоговую оценку, опираясь только на предоставленные данные.","latest news on the BTH token.
+
+use the following format:
+
+BTH <response date>
+
+#### Growth (+)
+list key bullish factors:
+1. ...
+2. ...
+
+#### Decline (-)
+list key bearish factors:
+1. ...
+2. ...
+
+### Summary
+provide a final score from -10 to 10:
+- -10 = sell everything
+- 0 = neutral / hold
+- 10 = buy aggressively
+
+briefly explain the final score based only on the provided data."
+"последние новости по токену XRP.
+
+используй следующий формат:
+
+XRP <дата ответа>
+
+#### Рост (+)
+перечисли ключевые позитивные факторы:
+1. ...
+2. ...
+
+#### Падение (-)
+перечисли ключевые негативные факторы:
+1. ...
+2. ...
+
+### Итог
+дай итоговую оценку от -10 до 10:
+- -10 = продавать всё
+- 0 = нейтрально / держать
+- 10 = активно покупать
+
+кратко объясни итоговую оценку, опираясь только на предоставленные данные.","latest news on the XRP token.
+
+use the following format:
+
+XRP <response date>
+
+#### Growth (+)
+list key bullish factors:
+1. ...
+2. ...
+
+#### Decline (-)
+list key bearish factors:
+1. ...
+2. ...
+
+### Summary
+provide a final score from -10 to 10:
+- -10 = sell everything
+- 0 = neutral / hold
+- 10 = buy aggressively
+
+briefly explain the final score based only on the provided data."
+"последние новости по токену ETH
+
+используй следующий формат:
+
+ETH  <дата ответа>
+
+#### Рост (+)
+перечисли ключевые позитивные факторы:
+1. ...
+2. ...
+
+#### Падение (-)
+перечисли ключевые негативные факторы:
+1. ...
+2. ...
+
+### Итог
+дай итоговую оценку от -10 до 10:
+- -10 = продавать всё
+- 0 = нейтрально / держать
+- 10 = активно покупать
+
+кратко объясни итоговую оценку, опираясь только на предоставленные данные.","latest news on the ETH token.
+
+use the following format:
+
+ETH <response date>
+
+#### Growth (+)
+list key bullish factors:
+1. ...
+2. ...
+
+#### Decline (-)
+list key bearish factors:
+1. ...
+2. ...
+
+### Summary
+provide a final score from -10 to 10:
+- -10 = sell everything
+- 0 = neutral / hold
+- 10 = buy aggressively
+
+briefly explain the final score based only on the provided data."
+"ситуация в США: экономика, рынок труда, криминальная ситуация, политическая ситуация и IT-рынок.
+
+используй следующий формат:
+
+## Экономика
+#### Позитивные факторы (+)
+1. ...
+2. ...
+
+#### Негативные факторы (-)
+1. ...
+2. ...
+
+## Рынок труда
+#### Позитивные факторы (+)
+1. ...
+2. ...
+
+#### Негативные факторы (-)
+1. ...
+2. ...
+
+## Криминальная ситуация
+#### Позитивные факторы (+)
+1. ...
+2. ...
+
+#### Негативные факторы (-)
+1. ...
+2. ...
+
+## Политическая ситуация
+#### Позитивные факторы (+)
+1. ...
+2. ...
+
+#### Негативные факторы (-)
+1. ...
+2. ...
+
+## IT-рынок
+оценить Big Tech и другие компании IT-сектора.
+
+#### Позитивные факторы (+)
+1. ...
+2. ...
+
+#### Негативные факторы (-)
+1. ...
+2. ...
+
+## Общий вывод
+кратко оцени общую ситуацию в США, выдели ключевые риски и позитивные сигналы.
+
+опирайся только на предоставленные данные.","situation in the United States: economy, labor market, crime situation, political situation, and IT market.
+
+use the following format:
+
+## Economy
+#### Positive factors (+)
+1. ...
+2. ...
+
+#### Negative factors (-)
+1. ...
+2. ...
+
+## Labor Market
+#### Positive factors (+)
+1. ...
+2. ...
+
+#### Negative factors (-)
+1. ...
+2. ...
+
+## Crime Situation
+#### Positive factors (+)
+1. ...
+2. ...
+
+#### Negative factors (-)
+1. ...
+2. ...
+
+## Political Situation
+#### Positive factors (+)
+1. ...
+2. ...
+
+#### Negative factors (-)
+1. ...
+2. ...
+
+## IT Market
+assess Big Tech and other companies in the IT sector.
+
+#### Positive factors (+)
+1. ...
+2. ...
+
+#### Negative factors (-)
+1. ...
+2. ...
+
+## Overall Conclusion
+briefly assess the overall situation in the United States, highlighting key risks and positive signals.
+
+use only the provided source data."
+"ситуация на Кипре: экономика, рынок труда, криминальная ситуация, политическая ситуация (с учётом близости к Ближнему Востоку, Турции и Израилю), а также IT-рынок.
+
+используй следующий формат:
+
+Кипр <дата ответа>
+
+## Экономика
+#### Позитивные факторы (+)
+1. ...
+2. ...
+
+#### Негативные факторы (-)
+1. ...
+2. ...
+
+## Рынок труда
+#### Позитивные факторы (+)
+1. ...
+2. ...
+
+#### Негативные факторы (-)
+1. ...
+2. ...
+
+## Криминальная ситуация
+#### Позитивные факторы (+)
+1. ...
+2. ...
+
+#### Негативные факторы (-)
+1. ...
+2. ...
+
+## Политическая ситуация
+учитывай влияние Ближнего Востока, Турции и Израиля.","situation in Cyprus: economy, labor market, crime situation, political situation (considering proximity to the Middle East, Turkey, and Israel), and the IT market.
+
+use the following format:
+
+Cyprus <response date>
+
+## Economy
+#### Positive factors (+)
+1. ...
+2. ...
+
+#### Negative factors (-)
+1. ...
+2. ...
+
+## Labor Market
+#### Positive factors (+)
+1. ...
+2. ...
+
+#### Negative factors (-)
+1. ...
+2. ...
+
+## Crime Situation
+#### Positive factors (+)
+1. ...
+2. ...
+
+#### Negative factors (-)
+1. ...
+2. ...
+
+## Political Situation
+consider the impact of the Middle East, Turkey, and Israel.
+
+#### Positive factors (+)
+1. ...
+2. ...
+
+#### Negative factors (-)
+1. ...
+2. ...
+
+## IT Market
+(include forex, iGaming, crypto, and other IT sectors; consider the impact of favorable taxation)
+
+#### Positive factors (+)
+1. ...
+2. ...
+
+#### Negative factors (-)
+1. ...
+2. ...
+
+## Overall Conclusion
+provide a final score from -10 to 10:
+- -10 = highly negative
+- 0 = neutral
+- 10 = highly positive
+
+briefly explain the score, highlighting key drivers and risks.
+
+use only the provided data."
+"ситуация по секторам компаний на Кипре: iGaming, forex, crypto, gaming, туризм, строительство и другие.
+
+используй следующий формат:
+
+Кипр
+
+## iGaming
+#### Позитивные факторы (+)
+1. ...
+2. ...
+
+#### Негативные факторы (-)
+1. ...
+2. ...
+
+## Forex
+#### Позитивные факторы (+)
+1. ...
+2. ...
+
+#### Негативные факторы (-)
+1. ...
+2. ...
+
+## Crypto
+#### Позитивные факторы (+)
+1. ...
+2. ...
+
+#### Негативные факторы (-)
+1. ...
+2. ...
+
+## Gaming
+#### Позитивные факторы (+)
+1. ...
+2. ...
+
+#### Негативные факторы (-)
+1. ...
+2. ...
+
+## Туризм
+#### Позитивные факторы (+)
+1. ...
+2. ...
+
+#### Негативные факторы (-)
+1. ...
+2. ...
+
+## Строительство
+#### Позитивные факторы (+)
+1. ...
+2. ...
+
+#### Негативные факторы (-)
+1. ...
+2. ...
+
+## Другое
+#### Позитивные факторы (+)
+1. ...
+2. ...
+
+#### Негативные факторы (-)
+1. ...
+2. ...
+
+## Общий вывод
+дай итоговую оценку от -10 до 10:
+- -10 = всё плохо (сильный негатив)
+- 0 = нейтрально
+- 10 = всё отлично (сильный рост)
+
+кратко объясни оценку, выделив ключевые драйверы и риски.
+
+используй только предоставленные данные.","situation across company sectors in Cyprus: iGaming, forex, crypto, gaming, tourism, construction, and others.
+
+use the following format:
+
+Cyprus
+
+## iGaming
+#### Positive factors (+)
+1. ...
+2. ...
+
+#### Negative factors (-)
+1. ...
+2. ...
+
+## Forex
+#### Positive factors (+)
+1. ...
+2. ...
+
+#### Negative factors (-)
+1. ...
+2. ...
+
+## Crypto
+#### Positive factors (+)
+1. ...
+2. ...
+
+#### Negative factors (-)
+1. ...
+2. ...
+
+## Gaming
+#### Positive factors (+)
+1. ...
+2. ...
+
+#### Negative factors (-)
+1. ...
+2. ...
+
+## Tourism
+#### Positive factors (+)
+1. ...
+2. ...
+
+#### Negative factors (-)
+1. ...
+2. ...
+
+## Construction
+#### Positive factors (+)
+1. ...
+2. ...
+
+#### Negative factors (-)
+1. ...
+2. ...
+
+## Other
+#### Positive factors (+)
+1. ...
+2. ...
+
+#### Negative factors (-)
+1. ...
+2. ...
+
+## Overall Conclusion
+provide a final score from -10 to 10:
+- -10 = very negative (sell/avoid)
+- 0 = neutral
+- 10 = very positive (strong growth)
+
+briefly explain the score, highlighting key drivers and risks.
+
+use only the provided data."

@@ -26,13 +26,21 @@ The bot aggregates, filters, and summarizes news using RAG with verifiable sourc
 
 In addition to real-time Q&A, the system can generate automated daily digests based on predefined questions.
 
-Instead of asking the bot manually, you can prepare a list of topics in advance:
+Instead of querying the bot manually, users can define a structured set of analytical questions in advance.  
+These questions are stored in a Google Sheet and processed on a schedule.
 
-- Latest news about XRP  
-- What is happening with Bitcoin today  
-- Key macro trends this week  
+### 📄 Example Questions
 
-These questions are stored in a separate Google Sheet.
+Below are sample questions used for automated analysis:
+
+- latest news on XRP, ETH  
+- crypto market overview with macro context  
+- situation in the US economy and labor market 
+- sector analysis in Cyprus ( forex, crypto, iGaming)
+
+The full list is available in:
+
+docs/daily_digest_questions.csv
 
 ---
 
