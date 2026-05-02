@@ -171,15 +171,16 @@ telegram-rag-bot/
 ├── README.ru.md                  ← Russian version
 ├── .gitignore
 ├── server/
-│   ├── server.js                 # Express + Telegram MTProto API server
-│   ├── session-generator.js      # One-time utility to obtain SESSION string
+│   ├── server.js                  # Express + Telegram MTProto API server
+│   ├── session-generator.js       # One-time utility to obtain SESSION string
 │   ├── package.json
-│   └── .env.example              # Environment variable template
+│   └── .env.example               # Environment variable template
 ├── n8n/
-│   ├── TG_RAG_1_Ingest.json      # Workflow: collect, dedup & index messages (hourly)
-│   └── TG_RAG_2_Query.json       # Workflow: answer Telegram bot queries
+│   ├── TG_RAG_1_Ingest.json       # Workflow: collect, dedup & index messages (hourly)
+│   ├── TG_RAG_2_Query.json        # Workflow: answer Telegram bot queries
+│   └── TG_RAG_3_Daily_Digest.json # Workflow: automated daily digest
 ├── database/
-│   └── init.sql                  # Full PostgreSQL / Supabase schema
+│   └── init.sql                   # Full PostgreSQL / Supabase schema
 └── docs/
     └── google_sheets_template.csv # Template for the variables spreadsheet
 ```

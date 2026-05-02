@@ -169,8 +169,9 @@ telegram-rag-bot/
 │   ├── package.json
 │   └── .env.example              # Шаблон переменных окружения
 ├── n8n/
-│   ├── TG_RAG_1_Ingest.json      # Воркфлоу: сбор, дедупликация и индексация (каждый час)
-│   └── TG_RAG_2_Query.json       # Воркфлоу: обработка запросов из Telegram
+│   ├── TG_RAG_1_Ingest.json       # Воркфлоу: сбор, дедупликация и индексация (каждый час)
+│   ├── TG_RAG_2_Query.json        # Воркфлоу: обработка запросов из Telegram
+│   └── TG_RAG_3_Daily_Digest.json # Воркфлоу: автоматический ежедневный дайджест
 ├── database/
 │   └── init.sql                  # Полная схема PostgreSQL / Supabase
 └── docs/
@@ -341,6 +342,7 @@ UPDATE tg_config SET value = '1'   WHERE key = 'fetch_hours_back';
 1. **Workflows → Import from file**
 2. Импортировать `n8n/TG_RAG_1_Ingest.json`
 3. Импортировать `n8n/TG_RAG_2_Query.json`
+4. Импортировать `n8n/TG_RAG_3_Daily_Digest.json`
 
 ---
 
