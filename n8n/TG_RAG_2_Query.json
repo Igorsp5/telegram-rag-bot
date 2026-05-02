@@ -15,8 +15,7 @@
         -1184,
         128
       ],
-      "typeVersion": 1.2,
-      "webhookId": "5379eada-9268-4aa5-a78c-ead847c88d67"
+      "typeVersion": 1.2
     },
     {
       "parameters": {
@@ -129,8 +128,7 @@
         0,
         0
       ],
-      "typeVersion": 1.2,
-      "webhookId": "97862dca-adfb-4929-8ca5-9e3db42c325b"
+      "typeVersion": 1.2
     },
     {
       "parameters": {
@@ -173,13 +171,7 @@
         1024,
         144
       ],
-      "typeVersion": 2.6,
-      "credentials": {
-        "postgres": {
-          "id": "pTGjRU4YFxqJSp9K",
-          "name": "railway"
-        }
-      }
+      "typeVersion": 2.6
     },
     {
       "parameters": {
@@ -251,13 +243,7 @@
         144
       ],
       "typeVersion": 2.6,
-      "alwaysOutputData": true,
-      "credentials": {
-        "postgres": {
-          "id": "pTGjRU4YFxqJSp9K",
-          "name": "railway"
-        }
-      }
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -321,8 +307,7 @@
         2352,
         528
       ],
-      "typeVersion": 1.2,
-      "webhookId": "d97a4160-c070-402f-8ac1-eb8de461fff3"
+      "typeVersion": 1.2
     },
     {
       "parameters": {
@@ -355,13 +340,7 @@
         2480,
         128
       ],
-      "typeVersion": 4.4,
-      "credentials": {
-        "openAiApi": {
-          "id": "AJbpunHZHRIiM35i",
-          "name": "OpenAI n8n_elest_v2"
-        }
-      }
+      "typeVersion": 4.4
     },
     {
       "parameters": {
@@ -392,8 +371,7 @@
         2912,
         128
       ],
-      "typeVersion": 1.2,
-      "webhookId": "cd85f7a2-6fa3-4a90-ac1a-81cc5e0bae78"
+      "typeVersion": 1.2
     },
     {
       "parameters": {
@@ -409,13 +387,7 @@
         144
       ],
       "typeVersion": 2.6,
-      "alwaysOutputData": true,
-      "credentials": {
-        "postgres": {
-          "id": "pTGjRU4YFxqJSp9K",
-          "name": "railway"
-        }
-      }
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -443,13 +415,7 @@
         2608,
         128
       ],
-      "typeVersion": 2.6,
-      "credentials": {
-        "postgres": {
-          "id": "pTGjRU4YFxqJSp9K",
-          "name": "railway"
-        }
-      }
+      "typeVersion": 2.6
     },
     {
       "parameters": {
@@ -507,13 +473,7 @@
         368
       ],
       "id": "390e9d8d-cbb2-46ad-8ed2-ab028cbb93ec",
-      "name": "external access store",
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "qfDFyhrEW0TuZ5eW",
-          "name": "Google Sheets account"
-        }
-      }
+      "name": "external access store"
     }
   ],
   "pinData": {},
@@ -767,24 +727,5 @@
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate"
-  },
-  "versionId": "f6693af4-21e1-4842-9ef1-5dcb1ccc89e3",
-  "meta": {
-    "instanceId": "474ce41d25c8e92bea3bbd4586c0e4d1954ba541d092a2bbdd9de306225a0c70"
-  },
-  "id": "u7lXPTTbaGZzjP0u",
-  "tags": [
-    {
-      "updatedAt": "2026-05-01T16:57:28.005Z",
-      "createdAt": "2026-05-01T16:57:28.005Z",
-      "id": "qPvfaevcUFWSSR8x",
-      "name": "2026_05_01"
-    },
-    {
-      "updatedAt": "2026-04-26T18:22:16.227Z",
-      "createdAt": "2026-04-26T18:22:16.227Z",
-      "id": "9Z4J3I7IpOpMSrLY",
-      "name": "last5"
-    }
-  ]
+  }
 }

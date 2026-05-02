@@ -19,6 +19,100 @@ This project solves:
 
 The bot aggregates, filters, and summarizes news using RAG with verifiable sources.
 
+
+---
+
+## 🧠 Additional Use Case — Daily Digest
+
+In addition to real-time Q&A, the system can generate automated daily digests based on predefined questions.
+
+Instead of asking the bot manually, you can prepare a list of topics in advance:
+
+- Latest news about XRP  
+- What is happening with Bitcoin today  
+- Key macro trends this week  
+
+These questions are stored in a separate Google Sheet.
+
+---
+
+### 📊 How it works
+
+1. A Google Sheet contains a list of questions (column `questions`)
+2. A scheduled n8n workflow runs every day (e.g. 07:15)
+3. Each question is processed independently
+4. For each question:
+   - embedding is created
+   - vector search retrieves top-K relevant messages
+   - GPT generates a structured answer
+5. Each result is sent to a Telegram channel
+
+---
+
+### 📝 Example Question
+
+```
+latest news about XRP
+```
+
+---
+
+### 📈 Example Answer Format
+
+```
+XRP 02.05.2026  
+
+#### Growth (+)
+1. Sentiment around XRP reached a 2-year high after integration with Rakuten Wallet (1)  
+2. XRP showed resilience with capital inflows while BTC/ETH saw outflows (1)  
+
+#### Decline (-)
+1. Strong resistance near $1.40 limits upside potential (1)  
+2. Ripple CTO stated XRP will not reach $10,000 (4)  
+
+### Summary
+Score: +6  
+Positive sentiment and adoption support growth, but resistance levels limit upside. Hold position.
+
+📡 Sources:
+(1) CryptoFateev — May 2  
+(2) Neo Life XRP — Apr 29  
+(3) Ripple XRP Channel — Apr 29  
+(4) Hobby Crypto X — May 2  
+```
+
+---
+
+### ⚙️ Setup (Daily Digest)
+
+1. Create a new Google Sheet with column:
+   ```
+   questions
+   ```
+
+2. Add your topics (one per row)
+
+3. Import workflow:
+   ```
+   TG_RAG_3_Daily_Digest.json
+   ```
+
+4. Configure credentials:
+   - Google Sheets  
+   - Postgres  
+   - OpenAI  
+   - Telegram  
+
+---
+
+### 💡 When to use
+
+- Daily market overview  
+- Crypto tracking  
+- Automated reports  
+- Newsletter generation  
+
+
 ---
 
 ## 🚀 Example Bot Response

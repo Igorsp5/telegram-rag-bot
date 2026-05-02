@@ -1,0 +1,560 @@
+{
+  "name": "TG RAG — 3. Daily Digest (Google Sheets → RAG → Channel)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "15 7 * * *"
+            }
+          ]
+        }
+      },
+      "id": "41dbfe4b-e568-49dd-869e-6b017f8b3d44",
+      "name": "Every Day 07:15",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_VARIABLES_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "access variables",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "external",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        256,
+        0
+      ],
+      "id": "94d47537-6079-4cec-94ec-7a702e0f0a09",
+      "name": "Load Variables"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst vars = {};\n\nfor (const item of items) {\n  const row = item.json;\n\n  const cleanRow = {};\n  for (const key of Object.keys(row)) {\n    cleanRow[key.trim()] = row[key];\n  }\n\n  const name = cleanRow.name;\n  const value = cleanRow.value;\n\n  if (name) {\n    vars[name] = value;\n  }\n}\n\nreturn [\n  {\n    json: {\n      vars\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ],
+      "id": "312c175a-31f9-4a57-8f01-9b784e166bae",
+      "name": "Parse Variables"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_DIGEST_TOPICS_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "topics for the digest",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Лист1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "93e5bf57-24e2-4bac-a777-40eadeac7a46",
+      "name": "Load Questions",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        1200,
+        0
+      ],
+      "typeVersion": 4.5
+    },
+    {
+      "parameters": {
+        "jsCode": "const vars = $('Parse Variables').first().json.vars;\nconst dbConfig = $('Parse DB Config').first().json.dbConfig || {};\n\nconst retentionDays = parseInt(dbConfig.retention_days || '60', 10);\nconst similarityMin = parseFloat(dbConfig.similarity_min || '0.25');\nconst topK = parseInt(dbConfig.search_top_k || '15', 10);\n\n// ВАЖНО: chat_id берём только из Google Sheet access variables.\n// Никакого hardcode и никаких fallback на digest_channel_id.\nconst chatId = vars.chat_id;\nif (!chatId) {\n  throw new Error('No chat_id found in Google Sheet access variables');\n}\n\nconst questions = $input.all()\n  .filter(r => r.json.questions && String(r.json.questions).trim().length > 5);\n\nif (questions.length === 0) {\n  throw new Error('No questions found in Google Sheet column \"questions\"');\n}\n\nreturn questions.map((r, i) => ({\n  json: {\n    queryText: String(r.json.questions).trim(),\n    chatId,\n    sessionId: 'digest_' + new Date().toISOString().slice(0, 10) + '_' + i,\n    vars,\n    dbConfig,\n    retentionDays,\n    similarityMin,\n    topK\n  }\n}));"
+      },
+      "id": "8449951d-995b-4709-b43b-253f4dd0eebe",
+      "name": "Split Questions",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1440,
+        0
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT key, value FROM tg_config\nWHERE key IN ('retention_days', 'similarity_min', 'search_top_k');",
+        "options": {}
+      },
+      "id": "57dea6b2-7331-47d8-ac5f-4b1edb4d1885",
+      "name": "Read DB Config",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        720,
+        0
+      ],
+      "typeVersion": 2.6
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "text-embedding-3-small"
+            },
+            {
+              "name": "input",
+              "value": "={{ $json.queryText }}"
+            },
+            {
+              "name": "encoding_format",
+              "value": "float"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d7619a79-d649-4d36-8839-970998a17526",
+      "name": "Embed Question",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1920,
+        16
+      ],
+      "typeVersion": 4.4
+    },
+    {
+      "parameters": {
+        "jsCode": "const embResponse = $input.first().json;\nif (embResponse.error) throw new Error('OpenAI error: ' + JSON.stringify(embResponse.error));\n\nconst embData = embResponse.data;\nif (!embData || !Array.isArray(embData)) throw new Error('No embedding data');\n\nconst embRaw = embData[0].embedding;\nconst vector = Array.isArray(embRaw)\n  ? embRaw\n  : Object.keys(embRaw).sort((a,b) => Number(a)-Number(b)).map(k => embRaw[k]);\n\n// В loop batchSize=1, поэтому здесь всегда текущий вопрос.\n// Берём его из Loop Over Questions, а не из Split Questions.first(), чтобы не залипать на первом вопросе.\nconst q = $('Loop Over Questions').item.json;\n\nreturn [{ json: {\n  queryText: q.queryText,\n  chatId: q.chatId,\n  sessionId: q.sessionId,\n  queryVector: '[' + vector.join(',') + ']',\n  retentionDays: q.retentionDays,\n  similarityMin: q.similarityMin,\n  topK: q.topK\n} }];"
+      },
+      "id": "f8ad1bdb-28c9-478b-a653-e07392221ad2",
+      "name": "Merge Vector + Config",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        2112,
+        16
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH params AS (\n  SELECT\n    '{{ String($json.queryText).replace(/'/g, \"''\") }}'::text AS query_text,\n    '{{ String($json.chatId).replace(/'/g, \"''\") }}'::text AS chat_id,\n    '{{ String($json.sessionId).replace(/'/g, \"''\") }}'::text AS session_id,\n    '{{ $json.queryVector }}'::vector AS qvec,\n    {{ $json.retentionDays }}::int AS retention_days,\n    {{ $json.similarityMin }}::float AS similarity_min,\n    {{ $json.topK }}::int AS top_k\n), hits AS (\n  SELECT\n    msg_id,\n    channel_title,\n    text,\n    msg_date::date AS msg_date,\n    (1 - (embedding <=> (SELECT qvec FROM params)))::float AS similarity\n  FROM tg_messages\n  WHERE\n    msg_date >= NOW() - ((SELECT retention_days FROM params) * INTERVAL '1 day')\n    AND embedding IS NOT NULL\n    AND (1 - (embedding <=> (SELECT qvec FROM params))) >= (SELECT similarity_min FROM params)\n  ORDER BY embedding <=> (SELECT qvec FROM params)\n  LIMIT (SELECT top_k FROM params)\n)\nSELECT\n  p.query_text,\n  p.chat_id,\n  p.session_id,\n  h.msg_id,\n  h.channel_title,\n  h.text,\n  h.msg_date,\n  h.similarity\nFROM params p\nLEFT JOIN hits h ON true;",
+        "options": {}
+      },
+      "id": "5c7ac1a0-6ace-4812-8a59-24669d0f4f8c",
+      "name": "Vector Search",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        2304,
+        16
+      ],
+      "typeVersion": 2.6,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const allRows = $input.all().map(i => i.json || {});\n\n// ВАЖНО: Vector Search возвращает до topK строк для ОДНОГО текущего вопроса.\n// query_text/chat_id/session_id специально протянуты в SQL в каждой строке,\n// поэтому берём метаданные из текущего результата Vector Search, а не через .first()\n// из других узлов.\nconst meta = allRows[0] || {};\n\nconst queryText = meta.query_text || '';\nconst chatId = meta.chat_id || '';\nconst sessionId = meta.session_id || '';\n\nconst rows = allRows.filter(r => r.msg_id);\n\nif (rows.length === 0) {\n  return [{\n    json: {\n      context: '',\n      sourcesBlock: '',\n      queryText,\n      chatId,\n      sessionId,\n      hasData: false\n    }\n  }];\n}\n\nconst byChannel = {};\nconst sourceIndex = {};\nlet srcNum = 1;\n\nrows.forEach(r => {\n  const rawTitle = r.channel_title || '';\n  const ch = String(rawTitle || 'Unknown source').trim();\n\n  if (!byChannel[ch]) {\n    byChannel[ch] = [];\n    sourceIndex[ch] = srcNum++;\n  }\n\n  byChannel[ch].push({\n    date: r.msg_date,\n    text: String(r.text || '').slice(0, 600)\n  });\n});\n\nlet context = '';\nfor (const [ch, msgs] of Object.entries(byChannel)) {\n  const num = sourceIndex[ch];\n  context += `\\n=== [${num}] ${ch} ===\\n`;\n  msgs.forEach(m => {\n    context += `[${m.date}] ${m.text}\\n`;\n  });\n}\n\nfunction fmtDate(raw) {\n  try {\n    return new Date(raw).toLocaleDateString('ru-RU', {\n      day: 'numeric',\n      month: 'short'\n    });\n  } catch (e) {\n    return raw;\n  }\n}\n\nconst sourcesList = Object.entries(byChannel).map(([ch, msgs]) => {\n  const num = sourceIndex[ch];\n  const latest = msgs.map(m => m.date).sort().reverse()[0];\n  return `(${num}) ${ch} — ${fmtDate(latest)}`;\n});\n\nconst sourcesBlock = '\\n\\n<b>📡 Sources:</b>\\n' + sourcesList.join('\\n');\n\nreturn [{\n  json: {\n    context: context.trim(),\n    sourcesBlock,\n    sourceIndex,\n    queryText,\n    chatId,\n    sessionId,\n    hasData: context.trim().length > 0\n  }\n}];"
+      },
+      "id": "063e5377-8ce7-4310-94db-7ec9e8871433",
+      "name": "Build RAG Context",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        2480,
+        16
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "has-data",
+              "leftValue": "={{ $json.hasData }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "755fd2ca-5f46-414b-95fd-4ee3eeca5a7f",
+      "name": "Has Data?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        2688,
+        16
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const { queryText, context, chatId, sourcesBlock, sourceIndex, sessionId } = item.json;\n\n  const sourcesList = Object.entries(sourceIndex || {})\n    .sort((a, b) => a[1] - b[1])\n    .map(([ch, num]) => `(${num}) = ${ch}`)\n    .join(', ');\n\n  const systemPrompt = [\n    'You are a financial news analyst. Answer ONLY based on the provided Telegram channel data.',\n    'Each source block is marked: === [N] Channel Name ===',\n    '',\n    'Rules:',\n    '- Use ONLY provided data, do not invent facts',\n    '- Remove ads and duplicates',\n    '- Style: Bloomberg/RBC — concise, factual',\n    '- After each point add source number: (1), (2)',\n    `- Source mapping: ${sourcesList}`,\n    '- If data is not relevant — say so explicitly',\n    '- Follow the exact FORMAT from the user query (headings with ####, scoring -10 to +10, etc.)',\n    '- Current date: ' + new Date().toLocaleDateString('ru-RU')\n  ].join('\\n');\n\n  const userPrompt = `Query:\\n${queryText}\\n\\nTelegram sources:\\n${context}`;\n\n  const body = {\n    model: 'gpt-4o-mini',\n    temperature: 0.3,\n    max_tokens: 1500,\n    messages: [\n      { role: 'system', content: systemPrompt },\n      { role: 'user', content: userPrompt }\n    ]\n  };\n\n  return { json: { body, chatId, sourcesBlock, sessionId, queryText } };\n});"
+      },
+      "id": "29b82791-ab8e-4e46-8726-bf9197ef77dc",
+      "name": "Build Digest Request",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        2928,
+        0
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {}
+      },
+      "id": "99c51851-f494-40a0-99a0-3085e1bf9ed8",
+      "name": "Call OpenAI",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        3136,
+        0
+      ],
+      "typeVersion": 4.4
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawText = $input.first().json?.choices?.[0]?.message?.content || 'No answer received.';\nconst req = $('Build Digest Request').item.json;\nconst { chatId, sourcesBlock = '', queryText = '', sessionId = '' } = req;\n\nconst safe = rawText\n  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')\n  .replace(/\\*\\*(.+?)\\*\\*/gs, '<b>$1</b>')\n  .replace(/#{4}\\s*(.+)/g, '<b>$1</b>')\n  .replace(/#{3}\\s*(.+)/g, '\\n<b>$1</b>')\n  .replace(/\\*(.+?)\\*/gs, '<b>$1</b>');\n\nreturn [{ json: { chatId, text: safe + sourcesBlock, queryText, sessionId } }];"
+      },
+      "id": "3f1211d9-77df-42bb-a730-b47a906162d8",
+      "name": "Format Answer",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        3360,
+        0
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "e6d48bac-cf6f-4941-bd71-c725c0f9bada",
+      "name": "Send to Channel",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        3584,
+        0
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "⚠️ <b>Digest:</b> No relevant data for:\n<i>{{ $json.queryText }}</i>",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "608052f7-c28f-42e6-8612-24d9eb755e2e",
+      "name": "Send No Data",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        2864,
+        288
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all();\nconst dbConfig = {};\n\nfor (const r of rows) {\n  if (r.json.key) dbConfig[String(r.json.key)] = r.json.value;\n}\n\nreturn [{ json: { dbConfig } }];"
+      },
+      "id": "bce92c02-5a29-4bcd-b96e-267ea5a1746a",
+      "name": "Parse DB Config",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        960,
+        0
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "e6a111e6-5ded-4fb5-ac69-7f37e75222c9",
+      "name": "Loop Over Questions",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [
+        1680,
+        0
+      ],
+      "typeVersion": 3
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Load Variables": {
+      "main": [
+        [
+          {
+            "node": "Parse Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Variables": {
+      "main": [
+        [
+          {
+            "node": "Read DB Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read DB Config": {
+      "main": [
+        [
+          {
+            "node": "Parse DB Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse DB Config": {
+      "main": [
+        [
+          {
+            "node": "Load Questions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Questions": {
+      "main": [
+        [
+          {
+            "node": "Split Questions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Questions": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Questions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed Question": {
+      "main": [
+        [
+          {
+            "node": "Merge Vector + Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Vector + Config": {
+      "main": [
+        [
+          {
+            "node": "Vector Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vector Search": {
+      "main": [
+        [
+          {
+            "node": "Build RAG Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build RAG Context": {
+      "main": [
+        [
+          {
+            "node": "Has Data?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Data?": {
+      "main": [
+        [
+          {
+            "node": "Build Digest Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send No Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Digest Request": {
+      "main": [
+        [
+          {
+            "node": "Call OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Format Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Answer": {
+      "main": [
+        [
+          {
+            "node": "Send to Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Questions": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Embed Question",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Channel": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Questions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send No Data": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Questions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every Day 07:15": {
+      "main": [
+        [
+          {
+            "node": "Load Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  }
+}
